@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreTicketRequest; // Vous devrez créer ces Request classes plus tard
-use App\Http\Requests\UpdateTicketRequest; // Vous devrez créer ces Request classes plus tard
+use App\Http\Requests\StoreTicketRequest;
+use App\Http\Requests\UpdateTicketRequest;
 use App\Services\Ticket\TicketService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,6 +20,11 @@ use OpenApi\Annotations as OA;
  * @OA\Server(
  *      url="http://127.0.0.1:8000",
  *      description="Serveur de développement"
+ * )
+ *
+ * @OA\Tag(
+ *     name="Tickets",
+ *     description="Endpoints pour la gestion des tickets d'assistance client"
  * )
  *
  * @OA\PathItem(
@@ -58,6 +63,24 @@ class TicketController extends Controller
 
     /**
      * Display a listing of the resource.
+     * @OA\Get(
+     *     path="/tickets",
+     *     tags={"Tickets"}, 
+     *     summary="Liste tous les tickets",
+     *     description="Récupère la liste paginée des tickets.",
+     *     @OA\Response(
+     *         response=200,
+     *         description="Liste des tickets",
+     *         @OA\JsonContent(
+     *             type="array",
+     *             @OA\Items(ref="#/components/schemas/Ticket") 
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Erreur serveur"
+     *     )
+     * )
      */
     public function index(): JsonResponse
     {
@@ -67,6 +90,29 @@ class TicketController extends Controller
 
     /**
      * Store a newly created resource in storage.
+     * @OA\Post(
+     *     path="/tickets",
+     *     tags={"Tickets"}, 
+     *     summary="Créer un nouveau ticket",
+     *     description="Crée un nouveau ticket avec les données fournies.",
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(ref="#/components/schemas/TicketPayload")
+     *     ),
+     *     @OA\Response(
+     *         response=201,
+     *         description="Ticket créé avec succès",
+     *         @OA\JsonContent(ref="#/components/schemas/Ticket")
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Erreurs de validation"
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Erreur serveur"
+     *     )
+     * )
      */
     public function store(StoreTicketRequest $request): JsonResponse
     {
@@ -79,6 +125,32 @@ class TicketController extends Controller
 
     /**
      * Display the specified resource.
+     * @OA\Get(
+     *     path="/tickets/{id}",
+     *     tags={"Tickets"},  
+     *     summary="Afficher un ticket spécifique",
+     *     description="Récupère les détails d'un ticket par son ID.",
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         description="ID du ticket à afficher",
+     *         required=true,
+     *         @OA\Schema(type="integer", format="int64")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Détails du ticket",
+     *         @OA\JsonContent(ref="#/components/schemas/Ticket")
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Ticket non trouvé"
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Erreur serveur"
+     *     )
+     * )
      */
     public function show(int $id): JsonResponse
     {
@@ -91,6 +163,40 @@ class TicketController extends Controller
 
     /**
      * Update the specified resource in storage.
+     * @OA\Put(
+     *     path="/tickets/{id}",
+     *     tags={"Tickets"},
+     *     summary="Mettre à jour un ticket",
+     *     description="Met à jour un ticket existant avec les données fournies.",
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         description="ID du ticket à mettre à jour",
+     *         required=true,
+     *         @OA\Schema(type="integer", format="int64")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(ref="#/components/schemas/TicketPayload")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Ticket mis à jour avec succès",
+     *         @OA\JsonContent(ref="#/components/schemas/Ticket")
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Ticket non trouvé"
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Erreurs de validation"
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Erreur serveur"
+     *     )
+     * )
      */
     public function update(UpdateTicketRequest $request, int $id): JsonResponse
     {
@@ -103,6 +209,34 @@ class TicketController extends Controller
 
     /**
      * Remove the specified resource from storage.
+     * @OA\Delete(
+     *     path="/tickets/{id}",
+     *     tags={"Tickets"}, 
+     *     summary="Supprimer un ticket",
+     *     description="Supprime un ticket existant par son ID.",
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         description="ID du ticket à supprimer",
+     *         required=true,
+     *         @OA\Schema(type="integer", format="int64")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Ticket supprimé avec succès",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Ticket deleted successfully")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Ticket non trouvé"
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Erreur serveur"
+     *     )
+     * )
      */
     public function destroy(int $id): JsonResponse
     {
