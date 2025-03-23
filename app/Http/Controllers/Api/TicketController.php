@@ -8,7 +8,45 @@ use App\Http\Requests\UpdateTicketRequest; // Vous devrez créer ces Request cla
 use App\Services\Ticket\TicketService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use OpenApi\Annotations as OA;
 
+/**
+ * @OA\Info(
+ *      title="CustomerCareAPI - Ticket Management API",
+ *      version="1.0.0",
+ *      description="API pour la gestion des tickets d'assistance client"
+ * )
+ *
+ * @OA\Server(
+ *      url="http://127.0.0.1:8000",
+ *      description="Serveur de développement"
+ * )
+ *
+ * @OA\PathItem(
+ *     path="/api"
+ * )
+ *
+ * @OA\Schema(
+ *     schema="Ticket",
+ *     title="Ticket",
+ *     description="Schéma du modèle Ticket",
+ *     @OA\Property(property="id", type="integer", format="int64", example=1),
+ *     @OA\Property(property="title", type="string", example="Problème d'accès à mon compte"),
+ *     @OA\Property(property="description", type="string", example="Je n'arrive plus à me connecter à mon compte depuis ce matin..."),
+ *     @OA\Property(property="status", type="string", enum={"open", "pending", "closed"}, example="open"),
+ *     @OA\Property(property="user_id", type="integer", format="int64", example=1),
+ *     @OA\Property(property="created_at", type="string", format="date-time"),
+ *     @OA\Property(property="updated_at", type="string", format="date-time")
+ * )
+ *
+ * @OA\Schema(
+ *     schema="TicketPayload",
+ *     title="TicketPayload",
+ *     description="Schéma pour la création/mise à jour d'un Ticket (payload de la requête)",
+ *     @OA\Property(property="title", type="string", example="Problème d'accès à mon compte"),
+ *     @OA\Property(property="description", type="string", example="Je n'arrive plus à me connecter à mon compte depuis ce matin...")
+ * )
+ */
 class TicketController extends Controller
 {
     protected $ticketService;
