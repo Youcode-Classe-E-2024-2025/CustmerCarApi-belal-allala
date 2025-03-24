@@ -7,16 +7,31 @@ use App\Models\User;
 
 class TicketService
 {
-    /**
-     * Récupère tous les tickets avec pagination (si nécessaire).
+     /**
+     * Récupère tous les tickets avec pagination et filtres.
      *
+     * @param array $filters  Tableau associatif de filtres (ex: ['status' => 'open', 'search' => 'mot clé'])
+     * @param int $perPage    Nombre de tickets par page
      * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
      */
-    public function getAllTickets()
+    public function getAllTickets(array $filters = [], int $perPage = 10)
     {
-        return Ticket::paginate(10); 
-    }
+        $query = Ticket::query(); // Commence une nouvelle requête Eloquent
 
+        // Appliquer les filtres si présents
+        if (isset($filters['status'])) {
+            $query->where('status', $filters['status']); // Filtrer par statut
+        }
+        if (isset($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(function ($q) use ($search) { // Recherche multi-critères (titre et description)
+                $q->where('title', 'like', "%$search%")
+                  ->orWhere('description', 'like', "%$search%");
+            });
+        }
+
+        return $query->paginate($perPage); // Paginer les résultats
+    }
     /**
      * Récupère un ticket par son ID.
      *
