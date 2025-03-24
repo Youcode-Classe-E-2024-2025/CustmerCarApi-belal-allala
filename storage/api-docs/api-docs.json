@@ -247,19 +247,63 @@
                 "tags": [
                     "Tickets"
                 ],
-                "summary": "Liste tous les tickets",
-                "description": "Récupère la liste paginée des tickets.",
+                "summary": "Liste tous les tickets (avec pagination et filtres)",
+                "description": "Récupère la liste paginée des tickets, avec possibilité de filtrer par statut et de rechercher par mot-clé.",
                 "operationId": "23abb903edea59ceb366f9f029c26991",
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "description": "Filtrer les tickets par statut (open, pending, closed)",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "open",
+                                "pending",
+                                "closed"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Rechercher des tickets par mot-clé dans le titre et la description",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Nombre de tickets par page (pagination)",
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32",
+                            "default": 10
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
-                        "description": "Liste des tickets",
+                        "description": "Liste paginée des tickets",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/Ticket"
-                                    }
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Ticket"
+                                            }
+                                        },
+                                        "links": {
+                                            "type": "object"
+                                        },
+                                        "meta": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
                                 }
                             }
                         }

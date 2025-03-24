@@ -150,4 +150,149 @@ public function it_can_get_all_tickets()
             ->assertJsonStructure(['message']); // Vérifier la structure JSON de la réponse (message)
         $this->assertDatabaseMissing('tickets', ['id' => $ticket->id]); // Vérifier que le ticket n'est plus en base de données
     }
+
+    /** @test */
+public function it_can_get_tickets_with_pagination()
+{
+    // 1. Arrange : Créer 30 tickets de test (pour avoir plusieurs pages)
+    Ticket::factory()->count(30)->create();
+
+    // 2. Act : GET /api/tickets?per_page=10 (demander 10 tickets par page)
+    $response = $this->getJson('/api/tickets?per_page=10');
+
+    // 3. Assert : Vérifier la réponse HTTP et la pagination
+    $response->assertStatus(200)
+        ->assertJsonCount(10, 'data') // Vérifier qu'on a 10 tickets dans le tableau 'data' (car per_page=10)
+        ->assertJsonPath('meta.per_page', 10) // Vérifier que 'per_page' dans les métadonnées est bien 10
+        ->assertJsonPath('meta.total', 30)    // Vérifier que le nombre total de tickets (meta.total) est bien 30
+        ->assertJsonPath('meta.last_page', 3); // Vérifier qu'il y a bien 3 pages (30 tickets / 10 par page = 3 pages)
+}
+
+/** @test */
+public function it_defaults_to_10_tickets_per_page_if_per_page_is_not_provided()
+{
+    // 1. Arrange : Créer 15 tickets de test
+    Ticket::factory()->count(15)->create();
+
+    // 2. Act : GET /api/tickets (sans paramètre per_page)
+    $response = $this->getJson('/api/tickets');
+
+    // 3. Assert : Vérifier que par défaut, on a 10 tickets par page
+    $response->assertStatus(200)
+        ->assertJsonCount(10, 'data') // Vérifier qu'on a 10 tickets (par défaut per_page=10)
+        ->assertJsonPath('meta.per_page', 10) // Vérifier que 'per_page' dans les métadonnées est bien 10
+        ->assertJsonPath('meta.total', 15)    // Vérifier que le nombre total de tickets (meta.total) est bien 15
+        ->assertJsonPath('meta.last_page', 2); // Vérifier qu'il y a 2 pages (15 tickets / 10 par page = 1.5 -> arrondi à 2 pages)
+}
+
+/** @test */
+public function it_can_get_tickets_on_page_2()
+{
+    // 1. Arrange : Créer 25 tickets de test
+    Ticket::factory()->count(25)->create();
+
+    // 2. Act : GET /api/tickets?page=2&per_page=10 (demander la page 2)
+    $response = $this->getJson('/api/tickets?page=2&per_page=10');
+
+    // 3. Assert : Vérifier qu'on récupère bien les tickets de la page 2
+    $response->assertStatus(200)
+        ->assertJsonCount(10, 'data') // Vérifier qu'on a 10 tickets sur la page 2 (per_page=10)
+        ->assertJsonPath('meta.current_page', 2) // Vérifier que la page courante (meta.current_page) est bien 2
+        ->assertJsonPath('meta.per_page', 10)    // Vérifier que 'per_page' est bien 10
+        ->assertJsonPath('meta.total', 25)       // Vérifier que le total est bien 25
+        ->assertJsonPath('meta.last_page', 3);    // Vérifier qu'il y a 3 pages (25 tickets / 10 par page = 2.5 -> arrondi à 3 pages)
+}
+
+/** @test */
+/** @test */
+public function it_can_filter_tickets_by_status()
+{
+    // 1. Arrange
+    Ticket::factory()->count(5)->create(['status' => 'open']);
+    Ticket::factory()->count(3)->create(['status' => 'pending']);
+    Ticket::factory()->count(2)->create(['status' => 'closed']);
+
+    // 2. Act
+    $response = $this->getJson('/api/tickets?status=pending');
+
+    // 3. Assert
+    $response->assertStatus(200)
+        ->assertJsonCount(3, 'data')
+        ->assertJsonStructure([
+            'data' => [
+                '*' => [
+                    'id',
+                    'title',
+                    'description',
+                    'status',
+                    'user_id',
+                    'created_at',
+                    'updated_at'
+                ]
+            ]
+        ])
+        ->assertJsonFragment(['status' => 'pending']);
+}
+
+/** @test */
+public function it_can_search_tickets_by_keyword()
+{
+    // 1. Arrange
+    Ticket::factory()->create(['title' => 'Ticket avec le mot clé "important"', 'description' => '...']);
+    Ticket::factory()->create(['title' => 'Autre ticket', 'description' => 'Description contenant "important" ...']);
+    Ticket::factory()->count(5)->create(['title' => 'Ticket sans le mot clé', 'description' => '...']);
+
+    // 2. Act
+    $response = $this->getJson('/api/tickets?search=important');
+
+    // 3. Assert
+    $response->assertStatus(200)
+        ->assertJsonCount(2, 'data')
+        ->assertJsonStructure([
+            'data' => [
+                '*' => [
+                    'id',
+                    'title',
+                    'description',
+                    'status',
+                    'user_id',
+                    'created_at',
+                    'updated_at'
+                ]
+            ]
+        ]);
+}
+
+/** @test */
+public function it_can_combine_pagination_and_filters()
+{
+    // 1. Arrange
+    Ticket::factory()->count(8)->create(['status' => 'open', 'title' => 'Ticket important']);
+    Ticket::factory()->count(5)->create(['status' => 'pending', 'title' => 'Ticket important']);
+    Ticket::factory()->count(7)->create(['status' => 'closed', 'title' => 'Autre ticket']);
+
+    // 2. Act
+    $response = $this->getJson('/api/tickets?status=open&search=important&per_page=5');
+
+    // 3. Assert
+    $response->assertStatus(200)
+        ->assertJsonCount(5, 'data')
+        ->assertJsonPath('meta.per_page', 5)
+        ->assertJsonPath('meta.total', 8)
+        ->assertJsonPath('meta.last_page', 2)
+        ->assertJsonStructure([
+            'data' => [
+                '*' => [
+                    'id',
+                    'title',
+                    'description',
+                    'status',
+                    'user_id',
+                    'created_at',
+                    'updated_at'
+                ]
+            ]
+        ])
+        ->assertJsonFragment(['status' => 'open']);
+}
 }
