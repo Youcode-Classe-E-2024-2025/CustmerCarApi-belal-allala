@@ -3,12 +3,22 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Api\StoreResponseRequest; // Vous devrez créer ces Request classes
-use App\Http\Requests\Api\UpdateResponseRequest; // Vous devrez créer ces Request classes
+use App\Http\Requests\Api\StoreResponseRequest;
+use App\Http\Requests\Api\UpdateResponseRequest;
 use App\Services\Response\ResponseService;
-use App\Models\Ticket; // Importez le modèle Ticket
+use App\Models\Ticket; 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use OpenApi\Annotations as OA;
+
+
+/**
+ * @OA\Tag(
+ *     name="Responses",
+ *     description="Endpoints pour la gestion des réponses aux tickets d'assistance client"
+ * )
+ * @OA\PathItem(path="/api")  <-- Si vous ne l'avez pas déjà dans un autre contrôleur, ajoutez-le ici (sinon, pas nécessaire)
+ */
 
 class ResponseController extends Controller
 {
@@ -21,7 +31,35 @@ class ResponseController extends Controller
 
     /**
      * Display a listing of responses for a specific ticket.
-     * GET /api/tickets/{ticket}/responses
+     * @OA\Get(
+     *     path="/tickets/{ticket}/responses",
+     *     tags={"Responses"},
+     *     summary="Liste les réponses d'un ticket",
+     *     description="Récupère la liste des réponses associées à un ticket spécifique.",
+     *     @OA\Parameter(
+     *         name="ticket",
+     *         in="path",
+     *         description="ID du ticket pour lequel récupérer les réponses",
+     *         required=true,
+     *         @OA\Schema(type="integer", format="int64")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Liste des réponses du ticket",
+     *         @OA\JsonContent(
+     *             type="array",
+     *             @OA\Items(ref="#/components/schemas/Response") // On définira le schéma Response plus tard
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Ticket non trouvé"
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Erreur serveur"
+     *     )
+     * )
      */
     public function index(Ticket $ticket): JsonResponse
     {
@@ -31,7 +69,40 @@ class ResponseController extends Controller
 
     /**
      * Store a newly created response for a ticket.
-     * POST /api/tickets/{ticket}/responses
+     * @OA\Post(
+     *     path="/tickets/{ticket}/responses",
+     *     tags={"Responses"},
+     *     summary="Créer une nouvelle réponse pour un ticket",
+     *     description="Crée une nouvelle réponse pour un ticket spécifique.",
+     *     @OA\Parameter(
+     *         name="ticket",
+     *         in="path",
+     *         description="ID du ticket auquel ajouter la réponse",
+     *         required=true,
+     *         @OA\Schema(type="integer", format="int64")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(ref="#/components/schemas/ResponsePayload") // On définira ResponsePayload plus tard
+     *     ),
+     *     @OA\Response(
+     *         response=201,
+     *         description="Réponse créée avec succès",
+     *         @OA\JsonContent(ref="#/components/schemas/Response")
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Erreurs de validation"
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Ticket non trouvé"
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Erreur serveur"
+     *     )
+     * )
      */
     public function store(StoreResponseRequest $request, Ticket $ticket): JsonResponse
     {
@@ -42,7 +113,32 @@ class ResponseController extends Controller
 
     /**
      * Display the specified response.
-     * GET /api/responses/{response}
+     * @OA\Get(
+     *     path="/responses/{response}",
+     *     tags={"Responses"},
+     *     summary="Afficher une réponse spécifique",
+     *     description="Récupère les détails d'une réponse par son ID.",
+     *     @OA\Parameter(
+     *         name="response",
+     *         in="path",
+     *         description="ID de la réponse à afficher",
+     *         required=true,
+     *         @OA\Schema(type="integer", format="int64")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Détails de la réponse",
+     *         @OA\JsonContent(ref="#/components/schemas/Response")
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Réponse non trouvée"
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Erreur serveur"
+     *     )
+     * )
      */
     public function show(int $id): JsonResponse
     {
