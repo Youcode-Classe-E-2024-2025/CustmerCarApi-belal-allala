@@ -66,24 +66,44 @@ class TicketController extends Controller
     /**
      * Display a listing of the resource.
      * @OA\Get(
-     *     path="/tickets",
-     *     tags={"Tickets"}, 
-     *     summary="Liste tous les tickets",
-     *     description="Récupère la liste paginée des tickets.",
-     *     @OA\Response(
-     *         response=200,
-     *         description="Liste des tickets",
-     *         @OA\JsonContent(
-     *             type="array",
-     *             @OA\Items(ref="#/components/schemas/Ticket") 
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Erreur serveur"
-     *     )
-     * )
-     */
+    *     path="/tickets",
+    *     tags={"Tickets"},
+    *     summary="Liste tous les tickets (avec pagination et filtres)", 
+    *     description="Récupère la liste paginée des tickets, avec possibilité de filtrer par statut et de rechercher par mot-clé.",
+    *     @OA\Parameter(
+    *         name="status",
+    *         in="query",
+    *         description="Filtrer les tickets par statut (open, pending, closed)",
+    *         @OA\Schema(type="string", enum={"open", "pending", "closed"})
+    *     ),
+    *     @OA\Parameter(
+    *         name="search",
+    *         in="query",
+    *         description="Rechercher des tickets par mot-clé dans le titre et la description",
+    *         @OA\Schema(type="string")
+    *     ),
+    *     @OA\Parameter(
+    *         name="per_page",
+    *         in="query",
+    *         description="Nombre de tickets par page (pagination)",
+    *         @OA\Schema(type="integer", format="int32", default=10)
+    *     ),
+    *     @OA\Response(
+    *         response=200,
+    *         description="Liste paginée des tickets",
+    *         @OA\JsonContent(
+    *             type="object",
+    *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/Ticket")),
+    *             @OA\Property(property="links", type="object"), 
+    *             @OA\Property(property="meta", type="object")  
+    *         )
+    *     ),
+    *     @OA\Response(
+    *         response=500,
+    *         description="Erreur serveur"
+    *     )
+    * )
+    */
     public function index(Request $request): JsonResponse
     {
         $filters = $request->only(['status', 'search']); // Récupérer les filtres depuis la requête (query parameters)
