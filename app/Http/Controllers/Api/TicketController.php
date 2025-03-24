@@ -84,18 +84,22 @@ class TicketController extends Controller
      *     )
      * )
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $tickets = $this->ticketService->getAllTickets();
+        $filters = $request->only(['status', 'search']); // Récupérer les filtres depuis la requête (query parameters)
+        $perPage = $request->integer('per_page', 10);    // Récupérer le nombre par page depuis la requête (query parameter), défaut à 10
+
+        $tickets = $this->ticketService->getAllTickets($filters, $perPage); // Passer les filtres et le nombre par page au service
+
         return response()->json([
-            'data' => $tickets->items(), 
-            'links' => [
+            'data' => $tickets->items(), // Retourner seulement les items (tickets) pour le tableau principal de données
+            'links' => [                  // Retourner les liens de pagination (pour le frontend)
                 'first' => $tickets->url(1),
                 'last' => $tickets->url($tickets->lastPage()),
                 'prev' => $tickets->previousPageUrl(),
                 'next' => $tickets->nextPageUrl(),
             ],
-            'meta' => [
+            'meta' => [                   // Retourner les métadonnées de pagination (pour le frontend)
                 'current_page' => $tickets->currentPage(),
                 'from' => $tickets->firstItem(),
                 'last_page' => $tickets->lastPage(),
