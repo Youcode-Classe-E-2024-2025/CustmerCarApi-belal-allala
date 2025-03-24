@@ -13,6 +13,235 @@
     ],
     "paths": {
         "/api": {},
+        "/tickets/{ticket}/responses": {
+            "get": {
+                "tags": [
+                    "Responses"
+                ],
+                "summary": "Liste les réponses d'un ticket",
+                "description": "Récupère la liste des réponses associées à un ticket spécifique.",
+                "operationId": "c8bd7c23933888e8616bedf4f3b95974",
+                "parameters": [
+                    {
+                        "name": "ticket",
+                        "in": "path",
+                        "description": "ID du ticket pour lequel récupérer les réponses",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Liste des réponses du ticket",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Response"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Ticket non trouvé"
+                    },
+                    "500": {
+                        "description": "Erreur serveur"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Responses"
+                ],
+                "summary": "Créer une nouvelle réponse pour un ticket",
+                "description": "Crée une nouvelle réponse pour un ticket spécifique.",
+                "operationId": "f119e5c30e301b8b0380e82986b5db75",
+                "parameters": [
+                    {
+                        "name": "ticket",
+                        "in": "path",
+                        "description": "ID du ticket auquel ajouter la réponse",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ResponsePayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Réponse créée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Response"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Erreurs de validation"
+                    },
+                    "404": {
+                        "description": "Ticket non trouvé"
+                    },
+                    "500": {
+                        "description": "Erreur serveur"
+                    }
+                }
+            }
+        },
+        "/responses/{response}": {
+            "get": {
+                "tags": [
+                    "Responses"
+                ],
+                "summary": "Afficher une réponse spécifique",
+                "description": "Récupère les détails d'une réponse par son ID.",
+                "operationId": "77484151b0c51f943cf7599f20186fe0",
+                "parameters": [
+                    {
+                        "name": "response",
+                        "in": "path",
+                        "description": "ID de la réponse à afficher",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Détails de la réponse",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Response"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Réponse non trouvée"
+                    },
+                    "500": {
+                        "description": "Erreur serveur"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Responses"
+                ],
+                "summary": "Mettre à jour une réponse",
+                "description": "Met à jour une réponse existante avec les données fournies.",
+                "operationId": "7105831b41d5964bd3aadce56e8d5a9f",
+                "parameters": [
+                    {
+                        "name": "response",
+                        "in": "path",
+                        "description": "ID de la réponse à mettre à jour",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ResponsePayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Réponse mise à jour avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Response"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Réponse non trouvée"
+                    },
+                    "422": {
+                        "description": "Erreurs de validation"
+                    },
+                    "500": {
+                        "description": "Erreur serveur"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Responses"
+                ],
+                "summary": "Supprimer une réponse",
+                "description": "Supprime une réponse existante par son ID.",
+                "operationId": "15ba8b27284cd49364dbb69e9e4f7f56",
+                "parameters": [
+                    {
+                        "name": "response",
+                        "in": "path",
+                        "description": "ID de la réponse à supprimer",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Réponse supprimée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Response deleted successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Réponse non trouvée"
+                    },
+                    "500": {
+                        "description": "Erreur serveur"
+                    }
+                }
+            }
+        },
         "/tickets": {
             "get": {
                 "tags": [
@@ -215,6 +444,51 @@
     },
     "components": {
         "schemas": {
+            "Response": {
+                "title": "Response",
+                "description": "Schéma du modèle Response",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 1
+                    },
+                    "content": {
+                        "type": "string",
+                        "example": "Voici ma réponse au ticket..."
+                    },
+                    "ticket_id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 1
+                    },
+                    "user_id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 2
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "ResponsePayload": {
+                "title": "ResponsePayload",
+                "description": "Schéma pour la création/mise à jour d'une Response (payload de la requête)",
+                "properties": {
+                    "content": {
+                        "type": "string",
+                        "example": "Voici ma réponse au ticket..."
+                    }
+                },
+                "type": "object"
+            },
             "Ticket": {
                 "title": "Ticket",
                 "description": "Schéma du modèle Ticket",
@@ -275,6 +549,10 @@
         }
     },
     "tags": [
+        {
+            "name": "Responses",
+            "description": "Endpoints pour la gestion des réponses aux tickets d'assistance client"
+        },
         {
             "name": "Tickets",
             "description": "Endpoints pour la gestion des tickets d'assistance client"
