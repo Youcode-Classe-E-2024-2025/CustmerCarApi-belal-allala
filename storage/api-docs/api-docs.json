@@ -1,0 +1,283 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "CustomerCareAPI - Ticket Management API",
+        "description": "API pour la gestion des tickets d'assistance client",
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "http://127.0.0.1:8000",
+            "description": "Serveur de développement"
+        }
+    ],
+    "paths": {
+        "/api": {},
+        "/tickets": {
+            "get": {
+                "tags": [
+                    "Tickets"
+                ],
+                "summary": "Liste tous les tickets",
+                "description": "Récupère la liste paginée des tickets.",
+                "operationId": "23abb903edea59ceb366f9f029c26991",
+                "responses": {
+                    "200": {
+                        "description": "Liste des tickets",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Ticket"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Erreur serveur"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Tickets"
+                ],
+                "summary": "Créer un nouveau ticket",
+                "description": "Crée un nouveau ticket avec les données fournies.",
+                "operationId": "0f82fdde1437d948b90892e1b714a1cc",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TicketPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Ticket créé avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Ticket"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Erreurs de validation"
+                    },
+                    "500": {
+                        "description": "Erreur serveur"
+                    }
+                }
+            }
+        },
+        "/tickets/{id}": {
+            "get": {
+                "tags": [
+                    "Tickets"
+                ],
+                "summary": "Afficher un ticket spécifique",
+                "description": "Récupère les détails d'un ticket par son ID.",
+                "operationId": "7231698c431b84bf9e4919256db5db1d",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID du ticket à afficher",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Détails du ticket",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Ticket"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Ticket non trouvé"
+                    },
+                    "500": {
+                        "description": "Erreur serveur"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Tickets"
+                ],
+                "summary": "Mettre à jour un ticket",
+                "description": "Met à jour un ticket existant avec les données fournies.",
+                "operationId": "4570131350668340ec592dfcb03071d8",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID du ticket à mettre à jour",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TicketPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Ticket mis à jour avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Ticket"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Ticket non trouvé"
+                    },
+                    "422": {
+                        "description": "Erreurs de validation"
+                    },
+                    "500": {
+                        "description": "Erreur serveur"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Tickets"
+                ],
+                "summary": "Supprimer un ticket",
+                "description": "Supprime un ticket existant par son ID.",
+                "operationId": "f04259a36f61d75107cf887dac1f5ec8",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID du ticket à supprimer",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ticket supprimé avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Ticket deleted successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Ticket non trouvé"
+                    },
+                    "500": {
+                        "description": "Erreur serveur"
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "Ticket": {
+                "title": "Ticket",
+                "description": "Schéma du modèle Ticket",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 1
+                    },
+                    "title": {
+                        "type": "string",
+                        "example": "Problème d'accès à mon compte"
+                    },
+                    "description": {
+                        "type": "string",
+                        "example": "Je n'arrive plus à me connecter à mon compte depuis ce matin..."
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "open",
+                            "pending",
+                            "closed"
+                        ],
+                        "example": "open"
+                    },
+                    "user_id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 1
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "TicketPayload": {
+                "title": "TicketPayload",
+                "description": "Schéma pour la création/mise à jour d'un Ticket (payload de la requête)",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "example": "Problème d'accès à mon compte"
+                    },
+                    "description": {
+                        "type": "string",
+                        "example": "Je n'arrive plus à me connecter à mon compte depuis ce matin..."
+                    }
+                },
+                "type": "object"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Tickets",
+            "description": "Endpoints pour la gestion des tickets d'assistance client"
+        }
+    ]
+}

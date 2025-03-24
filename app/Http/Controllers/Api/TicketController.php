@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreTicketRequest;
-use App\Http\Requests\UpdateTicketRequest;
+use App\Http\Requests\Api\StoreTicketRequest;
+use App\Http\Requests\Api\UpdateTicketRequest;
 use App\Services\Ticket\TicketService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Models\Ticket;
+use App\Models\User;
 use OpenApi\Annotations as OA;
 
 /**
@@ -85,7 +87,24 @@ class TicketController extends Controller
     public function index(): JsonResponse
     {
         $tickets = $this->ticketService->getAllTickets();
-        return response()->json($tickets);
+        return response()->json([
+            'data' => $tickets->items(), 
+            'links' => [
+                'first' => $tickets->url(1),
+                'last' => $tickets->url($tickets->lastPage()),
+                'prev' => $tickets->previousPageUrl(),
+                'next' => $tickets->nextPageUrl(),
+            ],
+            'meta' => [
+                'current_page' => $tickets->currentPage(),
+                'from' => $tickets->firstItem(),
+                'last_page' => $tickets->lastPage(),
+                'path' => $tickets->path(),
+                'per_page' => $tickets->perPage(),
+                'to' => $tickets->lastItem(),
+                'total' => $tickets->total(),
+            ],
+        ]);
     }
 
     /**

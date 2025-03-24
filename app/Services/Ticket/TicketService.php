@@ -35,15 +35,15 @@ class TicketService
      * @param User $user // Exemple: on passe l'utilisateur connecté
      * @return \App\Models\Ticket
      */
-    public function createTicket(array $ticketData, User $user): Ticket
+    public function createTicket(array $data, User $user): Ticket
     {
-        // Ici, on pourrait ajouter de la logique métier avant la création du ticket.
-        // Par exemple, des validations spécifiques, des actions à déclencher, etc.
-
-        $ticket = new Ticket($ticketData);
-        $ticket->user()->associate($user); // Associe le ticket à l'utilisateur (client)
+        $ticket = new Ticket([
+            'title' => $data['title'],
+            'description' => $data['description'],
+            'status' => 'open', // Statut par défaut
+            'user_id' => $user->id,
+        ]);
         $ticket->save();
-
         return $ticket;
     }
 
