@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Models\Response;
+use App\Models\Ticket; // Importez le modèle Ticket pour vérifier le statut du ticket
 use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
@@ -15,7 +16,7 @@ class ResponsePolicy
      */
     public function viewAny(User $user): bool
     {
-        return true; // Par défaut, tout utilisateur authentifié peut lister les réponses (à adapter)
+        return true; // Tous les utilisateurs authentifiés peuvent lister les réponses (à adapter)
     }
 
     /**
@@ -23,15 +24,17 @@ class ResponsePolicy
      */
     public function view(User $user, Response $response): bool
     {
-        return true; // Par défaut, tout utilisateur authentifié peut voir une réponse (à adapter)
+        // Par défaut, tout utilisateur authentifié peut voir une réponse (à adapter)
+        return true;
     }
 
     /**
      * Determine whether the user can create models.
      */
-    public function create(User $user): bool
+    public function create(User $user, Ticket $ticket): bool
     {
-        return true; // Par défaut, tout utilisateur authentifié peut créer une réponse (à adapter)
+        // Clients et agents peuvent créer des réponses, SEULEMENT si le ticket est OUVERT ou PENDING
+        return $user->hasRole(['client', 'agent']) && in_array($ticket->status, ['open', 'pending']);
     }
 
     /**
@@ -39,8 +42,8 @@ class ResponsePolicy
      */
     public function update(User $user, Response $response): bool
     {
-        // Seuls les agents ou admins peuvent mettre à jour une réponse (exemple)
-        return $user->hasRole(['agent', 'admin']); // Réutilise la méthode hasRole du User model
+        // Seuls les agents et admins peuvent mettre à jour les réponses
+        return $user->hasRole(['agent', 'admin']);
     }
 
     /**
@@ -48,22 +51,21 @@ class ResponsePolicy
      */
     public function delete(User $user, Response $response): bool
     {
-        // Seuls les admins peuvent supprimer une réponse (exemple)
-        return $user->hasRole('admin'); // Réutilise la méthode hasRole du User model
+        // Seuls les admins peuvent supprimer les réponses
+        return $user->hasRole('admin');
     }
 
-     // Méthode utilitaire pour vérifier si un utilisateur a un ou plusieurs rôles (plus lisible) - COPIÉE DE TicketPolicy (pour uniformité)
-    protected function hasRole(User $user, array|string $roles): bool
-    {
-        return $this->checkRole($user, $roles);
-    }
-
-    // Méthode utilitaire (COPIÉE DE TicketPolicy)
+    // Méthodes utilitaires (inchangées)
     protected function checkRole(User $user, array|string $roles): bool
     {
         if (is_string($roles)) {
-            $roles = [$roles]; // Si $roles est une chaîne, la convertir en tableau
+            $roles = [$roles];
         }
         return $user->roles()->whereIn('name', $roles)->exists();
+    }
+
+    protected function hasRole(User $user, array|string $roles): bool
+    {
+        return $this->checkRole($user, $roles);
     }
 }
