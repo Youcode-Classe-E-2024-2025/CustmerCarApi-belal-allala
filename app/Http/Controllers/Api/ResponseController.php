@@ -7,8 +7,8 @@ use App\Http\Requests\Api\StoreResponseRequest;
 use App\Http\Requests\Api\UpdateResponseRequest;
 use App\Services\Response\ResponseService;
 use App\Models\Ticket;
+use App\Models\Response;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use OpenApi\Annotations as OA;
 
 /**
@@ -44,211 +44,87 @@ class ResponseController extends Controller
     public function __construct(ResponseService $responseService)
     {
         $this->responseService = $responseService;
+        $this->middleware('auth:api');
     }
 
     /**
      * Display a listing of responses for a specific ticket.
-     * @OA\Get(
-     *     path="/tickets/{ticket}/responses",
-     *     tags={"Responses"},
-     *     summary="Liste les réponses d'un ticket",
-     *     description="Récupère la liste des réponses associées à un ticket spécifique.",
-     *     @OA\Parameter(
-     *         name="ticket",
-     *         in="path",
-     *         description="ID du ticket pour lequel récupérer les réponses",
-     *         required=true,
-     *         @OA\Schema(type="integer", format="int64")
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Liste des réponses du ticket",
-     *         @OA\JsonContent(
-     *             type="array",
-     *             @OA\Items(ref="#/components/schemas/Response")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="Ticket non trouvé"
-     *     ),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Erreur serveur"
-     *     )
-     * )
+     * @OA\Get( ... )
      */
     public function index(Ticket $ticket): JsonResponse
     {
+        // Autorisation: vérifier si l'utilisateur peut voir les réponses de ce ticket
+        $this->authorize('viewTicketResponses', $ticket);
+
         $responses = $this->responseService->getResponsesByTicketId($ticket->id);
         return response()->json($responses);
     }
 
     /**
      * Store a newly created response for a ticket.
-     * @OA\Post(
-     *     path="/tickets/{ticket}/responses",
-     *     tags={"Responses"},
-     *     summary="Créer une nouvelle réponse pour un ticket",
-     *     description="Crée une nouvelle réponse pour un ticket spécifique.",
-     *     @OA\Parameter(
-     *         name="ticket",
-     *         in="path",
-     *         description="ID du ticket auquel ajouter la réponse",
-     *         required=true,
-     *         @OA\Schema(type="integer", format="int64")
-     *     ),
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(ref="#/components/schemas/ResponsePayload")
-     *     ),
-     *     @OA\Response(
-     *         response=201,
-     *         description="Réponse créée avec succès",
-     *         @OA\JsonContent(ref="#/components/schemas/Response")
-     *     ),
-     *     @OA\Response(
-     *         response=422,
-     *         description="Erreurs de validation"
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="Ticket non trouvé"
-     *     ),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Erreur serveur"
-     *     )
-     * )
+     * @OA\Post( ... )
      */
     public function store(StoreResponseRequest $request, Ticket $ticket): JsonResponse
     {
-        $user = auth()->user(); // Récupérer l'utilisateur authentifié
+        $user = auth()->user();
+        
+        // Vérifier que le ticket est ouvert et que l'utilisateur peut répondre
+        $this->authorize('create', [Response::class, $ticket]);
+
         $response = $this->responseService->createResponse($request->validated(), $ticket, $user);
         return response()->json($response, 201);
     }
 
     /**
      * Display the specified response.
-     * @OA\Get(
-     *     path="/responses/{response}",
-     *     tags={"Responses"},
-     *     summary="Afficher une réponse spécifique",
-     *     description="Récupère les détails d'une réponse par son ID.",
-     *     @OA\Parameter(
-     *         name="response",
-     *         in="path",
-     *         description="ID de la réponse à afficher",
-     *         required=true,
-     *         @OA\Schema(type="integer", format="int64")
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Détails de la réponse",
-     *         @OA\JsonContent(ref="#/components/schemas/Response")
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="Réponse non trouvée"
-     *     ),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Erreur serveur"
-     *     )
-     * )
+     * @OA\Get( ... )
      */
     public function show(int $id): JsonResponse
     {
         $response = $this->responseService->getResponseById($id);
+        
         if (!$response) {
             return response()->json(['message' => 'Response not found'], 404);
         }
+
+        $this->authorize('view', $response);
+
         return response()->json($response);
     }
 
     /**
      * Update the specified response.
-     * @OA\Put(
-     *     path="/responses/{response}",
-     *     tags={"Responses"},
-     *     summary="Mettre à jour une réponse",
-     *     description="Met à jour une réponse existante avec les données fournies.",
-     *     @OA\Parameter(
-     *         name="response",
-     *         in="path",
-     *         description="ID de la réponse à mettre à jour",
-     *         required=true,
-     *         @OA\Schema(type="integer", format="int64")
-     *     ),
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(ref="#/components/schemas/ResponsePayload")
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Réponse mise à jour avec succès",
-     *         @OA\JsonContent(ref="#/components/schemas/Response")
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="Réponse non trouvée"
-     *     ),
-     *     @OA\Response(
-     *         response=422,
-     *         description="Erreurs de validation"
-     *     ),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Erreur serveur"
-     *     )
-     * )
+     * @OA\Put( ... )
      */
     public function update(UpdateResponseRequest $request, int $id): JsonResponse
     {
-        $response = $this->responseService->updateResponse($id, $request->validated());
+        $response = $this->responseService->getResponseById($id);
+        
         if (!$response) {
             return response()->json(['message' => 'Response not found'], 404);
         }
+
+        $this->authorize('update', $response);
+
+        $response = $this->responseService->updateResponse($id, $request->validated());
         return response()->json($response);
     }
 
     /**
      * Remove the specified response from storage.
-     * @OA\Delete(
-     *     path="/responses/{response}",
-     *     tags={"Responses"},
-     *     summary="Supprimer une réponse",
-     *     description="Supprime une réponse existante par son ID.",
-     *     @OA\Parameter(
-     *         name="response",
-     *         in="path",
-     *         description="ID de la réponse à supprimer",
-     *         required=true,
-     *         @OA\Schema(type="integer", format="int64")
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Réponse supprimée avec succès",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="message", type="string", example="Response deleted successfully")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="Réponse non trouvée"
-     *     ),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Erreur serveur"
-     *     )
-     * )
+     * @OA\Delete( ... )
      */
     public function destroy(int $id): JsonResponse
     {
-        $deleted = $this->responseService->deleteResponse($id);
-        if (!$deleted) {
+        $response = $this->responseService->getResponseById($id);
+        
+        if (!$response) {
             return response()->json(['message' => 'Response not found'], 404);
         }
+
+        $this->authorize('delete', $response);
+
+        $deleted = $this->responseService->deleteResponse($id);
         return response()->json(['message' => 'Response deleted successfully']);
     }
 }

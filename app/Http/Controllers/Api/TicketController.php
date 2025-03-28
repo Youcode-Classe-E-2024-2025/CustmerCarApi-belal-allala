@@ -9,51 +9,8 @@ use App\Services\Ticket\TicketService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use App\Models\Ticket;
-use App\Models\User;
 use OpenApi\Annotations as OA;
 
-/**
- * @OA\Info(
- *      title="CustomerCareAPI - Ticket Management API",
- *      version="1.0.0",
- *      description="API pour la gestion des tickets d'assistance client"
- * )
- *
- * @OA\Server(
- *      url="http://127.0.0.1:8000",
- *      description="Serveur de développement"
- * )
- *
- * @OA\Tag(
- *     name="Tickets",
- *     description="Endpoints pour la gestion des tickets d'assistance client"
- * )
- *
- * @OA\PathItem(
- *     path="/api"
- * )
- *
- * @OA\Schema(
- *     schema="Ticket",
- *     title="Ticket",
- *     description="Schéma du modèle Ticket",
- *     @OA\Property(property="id", type="integer", format="int64", example=1),
- *     @OA\Property(property="title", type="string", example="Problème d'accès à mon compte"),
- *     @OA\Property(property="description", type="string", example="Je n'arrive plus à me connecter à mon compte depuis ce matin..."),
- *     @OA\Property(property="status", type="string", enum={"open", "pending", "closed"}, example="open"),
- *     @OA\Property(property="user_id", type="integer", format="int64", example=1),
- *     @OA\Property(property="created_at", type="string", format="date-time"),
- *     @OA\Property(property="updated_at", type="string", format="date-time")
- * )
- *
- * @OA\Schema(
- *     schema="TicketPayload",
- *     title="TicketPayload",
- *     description="Schéma pour la création/mise à jour d'un Ticket (payload de la requête)",
- *     @OA\Property(property="title", type="string", example="Problème d'accès à mon compte"),
- *     @OA\Property(property="description", type="string", example="Je n'arrive plus à me connecter à mon compte depuis ce matin...")
- * )
- */
 class TicketController extends Controller
 {
     protected $ticketService;
@@ -61,65 +18,38 @@ class TicketController extends Controller
     public function __construct(TicketService $ticketService)
     {
         $this->ticketService = $ticketService;
+        $this->middleware('auth:api'); // Assure que l'utilisateur est authentifié
     }
 
     /**
      * Display a listing of the resource.
-     * @OA\Get(
-    *     path="/tickets",
-    *     tags={"Tickets"},
-    *     summary="Liste tous les tickets (avec pagination et filtres)", 
-    *     description="Récupère la liste paginée des tickets, avec possibilité de filtrer par statut et de rechercher par mot-clé.",
-    *     @OA\Parameter(
-    *         name="status",
-    *         in="query",
-    *         description="Filtrer les tickets par statut (open, pending, closed)",
-    *         @OA\Schema(type="string", enum={"open", "pending", "closed"})
-    *     ),
-    *     @OA\Parameter(
-    *         name="search",
-    *         in="query",
-    *         description="Rechercher des tickets par mot-clé dans le titre et la description",
-    *         @OA\Schema(type="string")
-    *     ),
-    *     @OA\Parameter(
-    *         name="per_page",
-    *         in="query",
-    *         description="Nombre de tickets par page (pagination)",
-    *         @OA\Schema(type="integer", format="int32", default=10)
-    *     ),
-    *     @OA\Response(
-    *         response=200,
-    *         description="Liste paginée des tickets",
-    *         @OA\JsonContent(
-    *             type="object",
-    *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/Ticket")),
-    *             @OA\Property(property="links", type="object"), 
-    *             @OA\Property(property="meta", type="object")  
-    *         )
-    *     ),
-    *     @OA\Response(
-    *         response=500,
-    *         description="Erreur serveur"
-    *     )
-    * )
-    */
+     * @OA\Get( ... )
+     */
     public function index(Request $request): JsonResponse
     {
-        $filters = $request->only(['status', 'search']); // Récupérer les filtres depuis la requête (query parameters)
-        $perPage = $request->integer('per_page', 10);    // Récupérer le nombre par page depuis la requête (query parameter), défaut à 10
+        // Autorisation: seul un utilisateur authentifié peut voir la liste des tickets
+        $this->authorize('viewAny', Ticket::class);
 
-        $tickets = $this->ticketService->getAllTickets($filters, $perPage); // Passer les filtres et le nombre par page au service
+        // Si l'utilisateur n'est pas admin, on filtre pour ne voir que ses tickets
+        $user = auth()->user();
+        $filters = $request->only(['status', 'search']);
+        $perPage = $request->integer('per_page', 10);
+
+        if (!$user->hasRole('admin')) {
+            $filters['user_id'] = $user->id;
+        }
+
+        $tickets = $this->ticketService->getAllTickets($filters, $perPage);
 
         return response()->json([
-            'data' => $tickets->items(), // Retourner seulement les items (tickets) pour le tableau principal de données
-            'links' => [                  // Retourner les liens de pagination (pour le frontend)
+            'data' => $tickets->items(),
+            'links' => [
                 'first' => $tickets->url(1),
                 'last' => $tickets->url($tickets->lastPage()),
                 'prev' => $tickets->previousPageUrl(),
                 'next' => $tickets->nextPageUrl(),
             ],
-            'meta' => [                   // Retourner les métadonnées de pagination (pour le frontend)
+            'meta' => [
                 'current_page' => $tickets->currentPage(),
                 'from' => $tickets->firstItem(),
                 'last_page' => $tickets->lastPage(),
@@ -133,160 +63,121 @@ class TicketController extends Controller
 
     /**
      * Store a newly created resource in storage.
-     * @OA\Post(
-     *     path="/tickets",
-     *     tags={"Tickets"}, 
-     *     summary="Créer un nouveau ticket",
-     *     description="Crée un nouveau ticket avec les données fournies.",
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(ref="#/components/schemas/TicketPayload")
-     *     ),
-     *     @OA\Response(
-     *         response=201,
-     *         description="Ticket créé avec succès",
-     *         @OA\JsonContent(ref="#/components/schemas/Ticket")
-     *     ),
-     *     @OA\Response(
-     *         response=422,
-     *         description="Erreurs de validation"
-     *     ),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Erreur serveur"
-     *     )
-     * )
+     * @OA\Post( ... )
      */
     public function store(StoreTicketRequest $request): JsonResponse
     {
-        // Récupérer l'utilisateur authentifié (exemple, à adapter selon votre auth)
-        $user = auth()->user(); // Assurez-vous que l'authentification est configurée et que l'utilisateur est connecté
+        $user = auth()->user();
+        $this->authorize('create', Ticket::class);
 
-        $ticket = $this->ticketService->createTicket($request->validated(), $user); // Utilise $request->validated() pour les données validées
-        return response()->json($ticket, 201); // 201 Created status code
+        $ticket = $this->ticketService->createTicket($request->validated(), $user);
+        return response()->json($ticket, 201);
     }
 
     /**
      * Display the specified resource.
-     * @OA\Get(
-     *     path="/tickets/{id}",
-     *     tags={"Tickets"},  
-     *     summary="Afficher un ticket spécifique",
-     *     description="Récupère les détails d'un ticket par son ID.",
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         description="ID du ticket à afficher",
-     *         required=true,
-     *         @OA\Schema(type="integer", format="int64")
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Détails du ticket",
-     *         @OA\JsonContent(ref="#/components/schemas/Ticket")
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="Ticket non trouvé"
-     *     ),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Erreur serveur"
-     *     )
-     * )
+     * @OA\Get( ... )
      */
     public function show(int $id): JsonResponse
     {
         $ticket = $this->ticketService->getTicketById($id);
+        
         if (!$ticket) {
-            return response()->json(['message' => 'Ticket not found'], 404); // 404 Not Found
+            return response()->json(['message' => 'Ticket not found'], 404);
         }
+
+        $this->authorize('view', $ticket);
+
         return response()->json($ticket);
     }
 
     /**
      * Update the specified resource in storage.
-     * @OA\Put(
-     *     path="/tickets/{id}",
-     *     tags={"Tickets"},
-     *     summary="Mettre à jour un ticket",
-     *     description="Met à jour un ticket existant avec les données fournies.",
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         description="ID du ticket à mettre à jour",
-     *         required=true,
-     *         @OA\Schema(type="integer", format="int64")
-     *     ),
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(ref="#/components/schemas/TicketPayload")
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Ticket mis à jour avec succès",
-     *         @OA\JsonContent(ref="#/components/schemas/Ticket")
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="Ticket non trouvé"
-     *     ),
-     *     @OA\Response(
-     *         response=422,
-     *         description="Erreurs de validation"
-     *     ),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Erreur serveur"
-     *     )
-     * )
+     * @OA\Put( ... )
      */
     public function update(UpdateTicketRequest $request, int $id): JsonResponse
     {
-        $ticket = $this->ticketService->updateTicket($id, $request->validated());
+        $ticket = $this->ticketService->getTicketById($id);
+        
         if (!$ticket) {
             return response()->json(['message' => 'Ticket not found'], 404);
         }
+
+        $this->authorize('update', $ticket);
+
+        $ticket = $this->ticketService->updateTicket($id, $request->validated());
         return response()->json($ticket);
     }
 
     /**
      * Remove the specified resource from storage.
-     * @OA\Delete(
-     *     path="/tickets/{id}",
-     *     tags={"Tickets"}, 
-     *     summary="Supprimer un ticket",
-     *     description="Supprime un ticket existant par son ID.",
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         description="ID du ticket à supprimer",
-     *         required=true,
-     *         @OA\Schema(type="integer", format="int64")
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Ticket supprimé avec succès",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="message", type="string", example="Ticket deleted successfully")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="Ticket non trouvé"
-     *     ),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Erreur serveur"
-     *     )
-     * )
+     * @OA\Delete( ... )
      */
     public function destroy(int $id): JsonResponse
     {
-        $deleted = $this->ticketService->deleteTicket($id);
-        if (!$deleted) {
+        $ticket = $this->ticketService->getTicketById($id);
+        
+        if (!$ticket) {
             return response()->json(['message' => 'Ticket not found'], 404);
         }
+
+        $this->authorize('delete', $ticket);
+
+        $deleted = $this->ticketService->deleteTicket($id);
         return response()->json(['message' => 'Ticket deleted successfully']);
+    }
+
+    /**
+     * Change ticket status
+     * @OA\Patch(
+     *     path="/tickets/{id}/status",
+     *     tags={"Tickets"},
+     *     summary="Change ticket status",
+     *     description="Change the status of a ticket (admin/support only)",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"status"},
+     *             @OA\Property(property="status", type="string", enum={"open", "pending", "closed"})
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Status updated",
+     *         @OA\JsonContent(ref="#/components/schemas/Ticket")
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Unauthorized"
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Ticket not found"
+     *     )
+     * )
+     */
+    public function changeStatus(Request $request, int $id): JsonResponse
+    {
+        $ticket = $this->ticketService->getTicketById($id);
+        
+        if (!$ticket) {
+            return response()->json(['message' => 'Ticket not found'], 404);
+        }
+
+        $this->authorize('changeStatus', $ticket);
+
+        $validated = $request->validate([
+            'status' => 'required|in:open,pending,closed'
+        ]);
+
+        $ticket = $this->ticketService->updateTicketStatus($id, $validated['status']);
+        return response()->json($ticket);
     }
 }
