@@ -2,8 +2,9 @@
 
 namespace Tests\Feature\Api;
 
-use App\Models\Response;
+use App\Models\Role;
 use App\Models\Ticket;
+use App\Models\Response;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -13,122 +14,222 @@ class ResponseControllerTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
-    public function it_can_get_responses_for_a_ticket()
+    protected $client;
+    protected $agent;
+    protected $admin;
+
+    protected function setUp(): void
     {
-        // 1. Arrange : Créer un ticket et des réponses associées
+        parent::setUp();
+
+        Role::create(['name' => 'client']);
+        Role::create(['name' => 'agent']);
+        Role::create(['name' => 'admin']);
+
+        $this->client = User::factory()->asClient()->create();
+        $this->agent = User::factory()->asAgent()->create();
+        $this->admin = User::factory()->asAdmin()->create();
+    }
+
+    /** @test */
+    public function client_can_respond_to_their_ticket()
+    {
+        $ticket = Ticket::factory()->create(['user_id' => $this->client->id]);
+
+        Sanctum::actingAs($this->client);
+        $response = $this->postJson("/api/tickets/{$ticket->id}/responses", [
+            'content' => 'Ma réponse'
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJsonStructure(['id', 'content', 'user_id', 'ticket_id']);
+    }
+
+    /** @test */
+    public function response_requires_content()
+    {
+        $ticket = Ticket::factory()->create(['user_id' => $this->client->id]);
+
+        Sanctum::actingAs($this->client);
+        $response = $this->postJson("/api/tickets/{$ticket->id}/responses", [
+            'content' => ''
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['content']);
+    }
+
+    /** @test */
+    public function agent_can_respond_to_assigned_ticket()
+    {
+        $ticket = Ticket::factory()->create(['agent_id' => $this->agent->id]);
+
+        Sanctum::actingAs($this->agent);
+        $response = $this->postJson("/api/tickets/{$ticket->id}/responses", [
+            'content' => 'Réponse officielle'
+        ]);
+
+        $response->assertStatus(201);
+    }
+
+    /** @test */
+    public function cannot_respond_to_closed_ticket()
+    {
+        $ticket = Ticket::factory()->create([
+            'user_id' => $this->client->id,
+            'status' => 'fermé'
+        ]);
+
+        Sanctum::actingAs($this->client);
+        $response = $this->postJson("/api/tickets/{$ticket->id}/responses", [
+            'content' => 'Tentative de réponse'
+        ]);
+
+        $response->assertStatus(403);
+    }
+
+    /** @test */
+    public function admin_can_view_all_responses()
+    {
         $ticket = Ticket::factory()->create();
         Response::factory()->count(3)->create(['ticket_id' => $ticket->id]);
 
-        // 2. Act : GET /api/tickets/{ticket}/responses
+        Sanctum::actingAs($this->admin);
         $response = $this->getJson("/api/tickets/{$ticket->id}/responses");
 
-        // 3. Assert : Vérifier la réponse HTTP et le contenu JSON
         $response->assertStatus(200)
-            ->assertJsonCount(3, '*') // Vérifier qu'on a un tableau JSON avec 3 réponses
-            ->assertJsonStructure([ // Vérifier la structure JSON de chaque réponse
-                '*' => [
-                    'id',
-                    'content',
-                    'ticket_id',
-                    'user_id',
-                    'created_at',
-                    'updated_at',
-                ],
-            ]);
+            ->assertJsonCount(3);
     }
 
     /** @test */
-    public function it_can_get_a_response_by_id()
+    public function client_can_only_view_responses_to_their_tickets()
     {
-        // 1. Arrange : Créer une réponse de test
+        $clientTicket = Ticket::factory()->create(['user_id' => $this->client->id]);
+        $otherTicket = Ticket::factory()->create();
+
+        Response::factory()->create(['ticket_id' => $clientTicket->id]);
+        Response::factory()->create(['ticket_id' => $otherTicket->id]);
+
+        Sanctum::actingAs($this->client);
+        $response = $this->getJson("/api/tickets/{$clientTicket->id}/responses");
+
+        $response->assertStatus(200)
+            ->assertJsonCount(1);
+    }
+
+    /** @test */
+    public function author_can_update_their_response()
+    {
+        $ticket = Ticket::factory()->create(['user_id' => $this->client->id]);
+        $response = Response::factory()->create([
+            'ticket_id' => $ticket->id,
+            'user_id' => $this->client->id,
+            'content' => 'Original'
+        ]);
+
+        Sanctum::actingAs($this->client);
+        $updateResponse = $this->putJson("/api/responses/{$response->id}", [
+            'content' => 'Modifié'
+        ]);
+
+        $updateResponse->assertStatus(200)
+            ->assertJsonPath('content', 'Modifié');
+    }
+
+    /** @test */
+    public function cannot_update_others_responses()
+    {
+        $otherUser = User::factory()->asClient()->create();
+        $response = Response::factory()->create(['user_id' => $otherUser->id]);
+
+        Sanctum::actingAs($this->client);
+        $updateResponse = $this->putJson("/api/responses/{$response->id}", [
+            'content' => 'Tentative de modification'
+        ]);
+
+        $updateResponse->assertStatus(403);
+    }
+
+    /** @test */
+    public function admin_can_update_any_response()
+    {
         $response = Response::factory()->create();
 
-        // 2. Act : GET /api/responses/{response}
-        $response = $this->getJson("/api/responses/{$response->id}");
+        Sanctum::actingAs($this->admin);
+        $updateResponse = $this->putJson("/api/responses/{$response->id}", [
+            'content' => 'Modifié par admin'
+        ]);
 
-        // 3. Assert : Vérifier la réponse HTTP et le contenu JSON
-        $response->assertStatus(200)
-            ->assertJsonStructure([ // Vérifier la structure JSON de la réponse
-                'id',
-                'content',
-                'ticket_id',
-                'user_id',
-                'created_at',
-                'updated_at',
-            ]);
+        $updateResponse->assertStatus(200);
     }
 
     /** @test */
-    public function it_can_create_a_response_for_a_ticket()
+    public function author_can_delete_their_response()
     {
-        // 1. Arrange : Créer un ticket, un utilisateur authentifié et préparer les données de la réponse
+        $response = Response::factory()->create(['user_id' => $this->client->id]);
+
+        Sanctum::actingAs($this->client);
+        $deleteResponse = $this->deleteJson("/api/responses/{$response->id}");
+
+        $deleteResponse->assertStatus(200)
+            ->assertJson(['message' => 'Response deleted successfully']);
+    }
+
+    /** @test */
+    public function cannot_delete_others_responses()
+    {
+        $otherUser = User::factory()->asClient()->create();
+        $response = Response::factory()->create(['user_id' => $otherUser->id]);
+
+        Sanctum::actingAs($this->client);
+        $deleteResponse = $this->deleteJson("/api/responses/{$response->id}");
+
+        $deleteResponse->assertStatus(403);
+    }
+
+    /** @test */
+    public function admin_can_delete_any_response()
+    {
+        $response = Response::factory()->create();
+
+        Sanctum::actingAs($this->admin);
+        $deleteResponse = $this->deleteJson("/api/responses/{$response->id}");
+
+        $deleteResponse->assertStatus(200);
+    }
+
+    /** @test */
+    public function prevent_sql_injection_in_responses()
+    {
         $ticket = Ticket::factory()->create();
-        $user = User::factory()->create();
-        Sanctum::actingAs($user);
-        $responseData = [
-            'content' => 'Contenu de la réponse de test',
-        ];
+        $maliciousInput = "1'; DROP TABLE users;--";
 
-        // 2. Act : POST /api/tickets/{ticket}/responses
-        $response = $this->postJson("/api/tickets/{$ticket->id}/responses", $responseData);
+        Sanctum::actingAs($this->client);
+        $response = $this->postJson("/api/tickets/{$ticket->id}/responses", [
+            'content' => $maliciousInput
+        ]);
 
-        // 3. Assert : Vérifier la réponse HTTP et le contenu JSON
-        $response->assertStatus(201) // 201 Created
-            ->assertJsonStructure([ // Vérifier la structure JSON de la réponse créée
-                'id',
-                'content',
-                'ticket_id',
-                'user_id',
-                'created_at',
-                'updated_at',
-            ])
-            ->assertJsonFragment($responseData); // Vérifier que les données envoyées sont bien dans la réponse
-        $this->assertDatabaseHas('responses', $responseData + ['ticket_id' => $ticket->id, 'user_id' => $user->id]); // Vérifier en base
+        $response->assertStatus(201);
+        $this->assertDatabaseHas('responses', [
+            'content' => $maliciousInput
+        ]);
     }
 
     /** @test */
-    public function it_can_update_a_response()
+    public function response_list_is_paginated()
     {
-        // 1. Arrange : Créer une réponse existante, un utilisateur authentifié et préparer les données de mise à jour
-        $response = Response::factory()->create(['content' => 'Contenu initial']);
-        $user = User::factory()->create();
-        Sanctum::actingAs($user);
-        $updatedData = [
-            'content' => 'Contenu mis à jour',
-        ];
+        $ticket = Ticket::factory()->create();
+        Response::factory()->count(15)->create(['ticket_id' => $ticket->id]);
 
-        // 2. Act : PUT /api/responses/{response}
-        $response = $this->putJson("/api/responses/{$response->id}", $updatedData);
+        Sanctum::actingAs($this->admin);
+        $response = $this->getJson("/api/tickets/{$ticket->id}/responses?per_page=5");
 
-        // 3. Assert : Vérifier la réponse HTTP et le contenu JSON
         $response->assertStatus(200)
-            ->assertJsonStructure([ // Vérifier la structure JSON de la réponse mise à jour
-                'id',
-                'content',
-                'ticket_id',
-                'user_id',
-                'created_at',
-                'updated_at',
-            ])
-            ->assertJsonFragment($updatedData); // Vérifier que les données mises à jour sont bien dans la réponse
-        $this->assertDatabaseHas('responses', $updatedData); // Vérifier en base
-    }
-
-    /** @test */
-    public function it_can_delete_a_response()
-    {
-        // 1. Arrange : Créer une réponse existante et authentifier un utilisateur
-        $responseToDelete = Response::factory()->create(); // Renommez la variable pour plus de clarté
-        $user = User::factory()->create();
-        Sanctum::actingAs($user);
-
-        // 2. Act : DELETE /api/responses/{response}
-        $httpResponse = $this->deleteJson("/api/responses/{$responseToDelete->id}");
-
-        // 3. Assert : Vérifier la réponse HTTP et la suppression
-        $httpResponse->assertStatus(200)
-            ->assertJsonStructure(['message']); // Vérifier la structure JSON (message)
-        $this->assertDatabaseMissing('responses', ['id' => $responseToDelete->id]); // Utilisez l'ID de l'objet original
+            ->assertJsonCount(5, 'data')
+            ->assertJsonStructure([
+                'data',
+                'links',
+                'meta'
+            ]);
     }
 }

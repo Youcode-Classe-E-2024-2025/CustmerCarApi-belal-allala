@@ -8,6 +8,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use App\Models\Ticket;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class User extends Authenticatable
 {
@@ -53,4 +54,24 @@ class User extends Authenticatable
     {
         return $this->hasMany(Ticket::class);
     }
+
+    public function roles(): BelongsToMany
+    {
+        return $this->belongsToMany(Role::class);
+    }
+
+     /**
+     * Vérifie si l'utilisateur a au moins un des rôles spécifiés.
+     *
+     * @param array|string $roles Un rôle ou un tableau de rôles (noms des rôles)
+     * @return bool
+     */
+    public function hasRole(array|string $roles): bool
+    {
+        if (is_string($roles)) {
+            $roles = [$roles]; // Si $roles est une chaîne, la convertir en tableau
+        }
+        return $this->roles()->whereIn('name', $roles)->exists();
+    }
+
 }
