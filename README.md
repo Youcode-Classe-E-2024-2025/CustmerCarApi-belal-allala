@@ -43,5 +43,5 @@ php artisan l5-swagger:generate
 
 ### Démarrer le serveur :
 ```bash
-php artisan serve
+# php artisan serve
 ```
