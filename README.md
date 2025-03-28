@@ -1,7 +1,5 @@
 # CustomerCareAPI - API de Gestion de Tickets d'Assistance Client
 
-[![Tests Status](https://github.com/Youcode-Classe-E-2024-2025/CustmerCarApi-belal-allala/actions/workflows/run-tests.yml/badge.svg)](https://github.com/Youcode-Classe-E-2024-2025/CustmerCarApi-belal-allala/actions)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 ## 📝 Description
 
